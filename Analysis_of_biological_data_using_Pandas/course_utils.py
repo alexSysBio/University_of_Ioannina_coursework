@@ -43,6 +43,18 @@ KLEIDIA = {
         ["αποκλισ", "standard deviation", "τυπικη απ"]],
 }
 
+COLUMN_NAMES = {'cell_id':'Cell ID', 
+                'cell_trajectory_id': 'Cell Cycle ID',
+                'area_um': 'Cell Area (μm²)',
+                'frame': 'Time (min)', 
+                'cc_phase': 'Position in the cell cycle',
+                'x': 'X cell coordinate (pixels)', 
+                'y': 'Y cell coordinate (pixels)', 
+                'cell_length_px': 'Cell Length (pixels)',
+                'pixel_scale':0.066,
+                'mean_fluor_2': 'RplA-GFP Mean Fluorescence (AU)',
+                'mean_fluor_3': 'HupA-mCherry Mean Fluorescence (AU)'}
+
 
 def _norm(s):
     """Πεζά, χωρίς τόνους, με τελικό σ - ώστε «Μέσος» και «μεσοσ» να ταιριάζουν."""
