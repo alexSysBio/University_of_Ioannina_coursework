@@ -7,7 +7,7 @@ course_utils.py
 Χρήση μέσα στο notebook:
 
     import course_utils as cu
-    cu.ONOMA = "Papadopoulos_Maria"
+    cu.ONOMA = "Papadopoulou_Maria"
 
     cu.katagrapse(1, apantisi_1)     # έλεγχος + χρονοσήμανση
     cu.epanafora()                   # επαναφορά μετά από διακοπή
