@@ -16,13 +16,14 @@ course_utils.py
 Οι λέξεις-κλειδιά κάθε ερώτησης βρίσκονται στο λεξικό KLEIDIA παρακάτω.
 """
 
-import os, time, pickle, unicodedata, hashlib
+import os, re, time, pickle, unicodedata, hashlib
 from datetime import datetime
 
 # --------------------------------------------------------------------------
 # Όνομα φοιτητή/φοιτήτριας - ΣΥΜΠΛΗΡΩΣΤΕ ΤΟ ΠΡΙΝ ΞΕΚΙΝΗΣΕΤΕ
 # --------------------------------------------------------------------------
-ONOMA = ""          # π.χ. "Papadopoulou_Maria_14102027
+ONOMA = ""          # π.χ. "Papadopoulou_Maria_14102027"
+EMAIL = ""          # ακαδημαϊκό email, π.χ. "bio01234@uoi.gr"
 ARXEIO = "apantiseis_timestamps.pkl"
 
 EROTISEIS = {
@@ -81,6 +82,30 @@ COLUMN_NAMES = {'cell_id':'Cell ID',
                 'pixel_scale':0.066,
                 'mean_fluor_2': 'RplA-GFP Mean Fluorescence (AU)',
                 'mean_fluor_3': 'HupA-mCherry Mean Fluorescence (AU)'}
+
+
+def _elegxos_email(address):
+    """Επιστρέφει (έγκυρο, μήνυμα).
+
+    Απαιτείται ακαδημαϊκό email του Πανεπιστημίου Ιωαννίνων. Γίνονται δεκτά και
+    τα υποτομέα-email (π.χ. @cc.uoi.gr, @biology.uoi.gr), όχι όμως διευθύνσεις
+    εκτός του ιδρύματος.
+    """
+    address = (address or "").strip()
+
+    if not address:
+        return False, ("δεν έχετε συμπληρώσει το cu.EMAIL - χωρίς αυτό δεν "
+                       "μπορούν να σταλούν τα αποτελέσματά σας")
+
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$", address):
+        return False, f"το '{address}' δεν μοιάζει με έγκυρη διεύθυνση email"
+
+    tomeas = address.rsplit("@", 1)[1].lower()
+    if tomeas != "uoi.gr" and not tomeas.endswith(".uoi.gr"):
+        return False, (f"το '{address}' δεν είναι ακαδημαϊκό email του "
+                       "Πανεπιστημίου Ιωαννίνων - πρέπει να τελειώνει σε @uoi.gr")
+
+    return True, ""
 
 
 def _norm(s):
@@ -145,13 +170,14 @@ def _fortose():
         rec.setdefault("proxeira", {})      # ό,τι γράφτηκε, έστω ατελές
         rec.setdefault("apantiseis", {})
         return rec
-    return {"onoma": ONOMA, "enarxi": time.time(),
+    return {"onoma": ONOMA, "email": EMAIL, "enarxi": time.time(),
             "enarxi_iso": datetime.now().isoformat(timespec="seconds"),
             "apantiseis": {}, "proxeira": {}}
 
 
 def _apothikeuse(rec):
     rec["onoma"] = ONOMA or rec.get("onoma", "")
+    rec["email"] = EMAIL or rec.get("email", "")
     with open(ARXEIO, "wb") as f:
         pickle.dump(rec, f)
 
@@ -184,6 +210,7 @@ def _bar(rec):
             padding:12px 16px; color:#1a1a1a; display:inline-block;">
 <b>Πρόοδος: {plithos} από {len(EROTISEIS)}</b>
 &nbsp;&nbsp;<span style="color:#777;">{rec.get("onoma") or "χωρίς όνομα"}</span>
+&nbsp;&nbsp;<span style="color:#999; font-size:0.9em;">{rec.get("email") or "χωρίς email"}</span>
 <table style="border-collapse:collapse; margin-top:8px;">{''.join(seires)}</table>
 </div>"""))
 
@@ -192,6 +219,10 @@ def katagrapse(n, keimeno):
     """Ελέγχει την απάντηση, καταγράφει χρονοσήμανση και ενημερώνει την μπάρα."""
     keimeno = str(keimeno).strip()
     rec = _fortose()
+
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
 
     if not keimeno:
         print(f"Ερώτηση {n}: δεν έχετε γράψει ακόμη απάντηση.")
@@ -211,7 +242,6 @@ def katagrapse(n, keimeno):
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
             "keimeno": keimeno,
-            "lexeis_pou_vrethikan": briskontai,
             "ennoies": f"{len(briskontai)}/{apaitoumena}",
         }
         _apothikeuse(rec)
@@ -267,13 +297,15 @@ def epanafora():
 
     if rec.get("onoma"):
         g["ONOMA"] = rec["onoma"]
+    if rec.get("email"):
+        g["EMAIL"] = rec["email"]
 
     print(f"Επαναφέρθηκαν οι απαντήσεις: {epanaferthikan or 'καμία'}")
     print("Οι χρονοσημάνσεις που είχαν καταγραφεί διατηρούνται.")
     print("Προσοχή: τα κελιά δείχνουν ακόμη το παλιό τους κείμενο - "
           "τυπώστε π.χ. apantisi_1 για να δείτε τι επαναφέρθηκε.")
     _bar(rec)
-    return rec
+    return None
 
 
 def katevase_apantiseis():
@@ -283,10 +315,16 @@ def katevase_apantiseis():
     print(f"Αποθηκεύτηκαν {len(rec['apantiseis'])} από {len(EROTISEIS)} απαντήσεις "
           f"στο {ARXEIO}")
     if not ONOMA:
-        print("ΠΡΟΣΟΧΗ: δεν έχετε συμπληρώσει το ONOMA στο πρώτο κελί.")
+        print("ΠΡΟΣΟΧΗ: δεν έχετε συμπληρώσει το cu.ONOMA στο πρώτο κελί.")
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("\nΣΦΑΛΜΑ:", minima)
+        print("Διορθώστε το cu.EMAIL στο πρώτο κελί και ξανατρέξτε αυτό το κελί.")
+        return None
+    print("Email επικοινωνίας:", EMAIL)
     try:
         from google.colab import files
         files.download(ARXEIO)
     except Exception:
         print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(ARXEIO)})")
-    return rec
+    return None
