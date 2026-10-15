@@ -36,6 +36,7 @@ EROTISEIS = {
     5: "Άσκηση 1",
     6: "Άσκηση 2",
     7: "Άσκηση 3",
+    8: "Άσκηση 4",
 }
 
 # Ποιες στήλες ελέγχει κάθε άσκηση κώδικα: n -> (στήλη φοιτητή, σωστή στήλη).
@@ -76,6 +77,24 @@ ASKISEIS_PINAKA = {
         "stili_omadas":        "cell_trajectory_id",
         "stili_apotelesmatos": "mesos_rythmos_afxisis_perhour",
         "stili_xronou":        "frame",      # 1 καρέ = 1 λεπτό
+    },
+}
+
+# Ασκήσεις που ομαδοποιούν σε ΔΙΑΣΤΗΜΑΤΑ και υπολογίζουν ανά διάστημα.
+# Οι αναμενόμενες τιμές είναι ΚΑΤΑΚΕΡΜΑΤΙΣΜΕΝΕΣ: ούτε η μέθοδος ούτε οι
+# απαντήσεις φαίνονται σε όποιον διαβάσει αυτό το αρχείο.
+ASKISEIS_BIN = {
+    8: {
+        "stili_apotelesmatos": "meso_emvadon",
+        "psifia":              3,
+        "kleidia":             [
+            "c3288d62351728d7",
+            "10e4bd9509940a6f",
+            "85da49f644335c40",
+            "cf285b57633ffb73",
+            "8c29455502ef8ed1",
+            "33dbfeac67ef15b8",
+        ],
     },
 }
 
@@ -397,6 +416,82 @@ def katagrapse_askisi_pinaka(n, pinakas, df=None, anoxi=1e-6):
 
     print(f"  τροχιές        : {len(sosto)}")
     print(f"  διάμεσος ρυθμός: {float(sosto.median()):.3f} ανά ώρα")
+    _bar(rec)
+    return True
+
+
+def katagrapse_askisi_bin(n, pinakas, df=None):
+    """Άσκηση με διαστήματα. Ο έλεγχος γίνεται με κατακερματισμένες τιμές:
+    το αρχείο αυτό ΔΕΝ περιέχει ούτε τις απαντήσεις ούτε τον τρόπο υπολογισμού."""
+    rec = _fortose()
+
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prod = ASKISEIS_BIN.get(n, {})
+    if not prod:
+        print(f"{_etiketa(n)}: άγνωστη άσκηση.")
+        _bar(rec); return False
+
+    stili_apot = prod["stili_apotelesmatos"]
+    psifia     = prod["psifia"]
+    kleidia    = prod["kleidia"]
+
+    if not isinstance(pinakas, pd.DataFrame):
+        print(f"{_etiketa(n)}: περίμενα έναν πίνακα (DataFrame), "
+              f"πήρα {type(pinakas).__name__}.")
+        print("Μήπως έμεινε το ... στο κελί;")
+        _bar(rec); return False
+
+    if stili_apot not in pinakas.columns:
+        print(f"{_etiketa(n)}: ο πίνακάς σας δεν έχει στήλη '{stili_apot}'.")
+        print("Οι στήλες που βρήκα:", ", ".join(map(str, pinakas.columns)) or "(καμία)")
+        _bar(rec); return False
+
+    if len(pinakas) != len(kleidia):
+        print(f"{_etiketa(n)}: ο πίνακάς σας έχει {len(pinakas)} γραμμές, "
+              f"ενώ περίμενα {len(kleidia)}.")
+        print("Ελέγξτε τα όρια των διαστημάτων και το include_lowest=True.")
+        _bar(rec); return False
+
+    try:
+        dika_tous = pd.to_numeric(pinakas[stili_apot], errors="raise").to_numpy(dtype=float)
+    except (TypeError, ValueError):
+        print(f"{_etiketa(n)}: η στήλη '{stili_apot}' δεν περιέχει αριθμούς.")
+        print("Μήπως έμεινε το ... στη γραμμή του υπολογισμού;")
+        _bar(rec); return False
+
+    tairiasan = sum(1 for tim, kl in zip(dika_tous, kleidia)
+                    if not (tim != tim) and _hash(f"{tim:.{psifia}f}") == kl)
+    anapoda = sum(1 for tim, kl in zip(dika_tous[::-1], kleidia)
+                  if not (tim != tim) and _hash(f"{tim:.{psifia}f}") == kl)
+
+    if tairiasan != len(kleidia):
+        if anapoda == len(kleidia):
+            print(f"{_etiketa(n)}: οι τιμές είναι σωστές αλλά ΑΝΑΠΟΔΑ.")
+            print("Ταξινομήστε τον πίνακα κατά αύξον διάστημα.")
+        else:
+            print(f"{_etiketa(n)}: {tairiasan} από {len(kleidia)} διαστήματα σωστά.")
+            print("Ελέγξτε τα όρια, το include_lowest=True, και ότι υπολογίζετε")
+            print(f"τον ΜΕΣΟ ΟΡΟ (όχι τη διάμεσο) στη στήλη που ζητείται.")
+        _bar(rec); return False
+
+    if n not in rec["apantiseis"]:
+        tora = time.time()
+        rec["apantiseis"][n] = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
+            "keimeno": f"άσκηση κώδικα - {len(kleidia)} διαστήματα, όλα σωστά",
+            "ennoies": "1/1",
+        }
+        _apothikeuse(rec)
+        print(f"{_etiketa(n)}: ΣΩΣΤΑ - καταγράφηκε στις "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
+    else:
+        print(f"{_etiketa(n)}: σωστό (είχε ήδη καταγραφεί).")
+
+    print(f"  και τα {len(kleidia)} διαστήματα αναπαράχθηκαν σωστά.")
     _bar(rec)
     return True
 
