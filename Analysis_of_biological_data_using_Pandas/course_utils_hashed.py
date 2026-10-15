@@ -27,11 +27,12 @@ EMAIL = ""          # ακαδημαϊκό email, π.χ. "bio01234@uoi.gr"
 ARXEIO = "apantiseis_timestamps.pkl"
 
 EROTISEIS = {
-    1: "Ριβοσώματα",
-    2: "Χρωμόσωμα",
-    3: "Μέτρηση συγκέντρωσης πρωτεΐνης",
-    4: "Δύο δημοφιλή στατιστικά",
-    5: "Άσκηση 1: pixel -> μm²",
+    1: "Ερώτηση 1",
+    2: "Ερώτηση 2",
+    3: "Ερώτηση 3",
+    4: "Ερώτηση 4",
+    5: "Άσκηση 1",
+    6: "Άσκηση 2",
 }
 
 # Ποιες στήλες ελέγχει κάθε άσκηση κώδικα: n -> (στήλη φοιτητή, σωστή στήλη).
@@ -39,6 +40,15 @@ EROTISEIS = {
 # δηλώνει ο φοιτητής, ώστε να μην αρκεί ένα «diafora = 0».
 ASKISEIS = {
     5: ("cell_area_micrometer", "area_um"),
+}
+
+# Ασκήσεις που ζητούν αριθμητικές τιμές: n -> {όνομα: (στήλη, μέθοδος, ορίσματα)}.
+# Η συνάρτηση υπολογίζει μόνη της το σωστό και το συγκρίνει με τη δήλωση του φοιτητή.
+ASKISEIS_TIMON = {
+    6: {
+        "mesos":           ("cell_area_micrometer", "mean", {}),
+        "typiki_apoklisi": ("cell_area_micrometer", "std", {"ddof": 1}),
+    },
 }
 
 # Κάθε "omada" είναι μία έννοια· μέσα της βρίσκονται συνώνυμα. Αρκεί να
@@ -114,6 +124,11 @@ def _elegxos_email(address):
                        "Πανεπιστημίου Ιωαννίνων - πρέπει να τελειώνει σε @uoi.gr")
 
     return True, ""
+
+
+def _etiketa(n):
+    """Η ετικέτα της ερώτησης/άσκησης, ίδια με αυτήν της μπάρας προόδου."""
+    return EROTISEIS.get(n, f"Ερώτηση {n}")
 
 
 def _norm(s):
@@ -203,7 +218,7 @@ def _bar(rec):
         seires.append(f"""
 <tr>
   <td style="padding:4px 10px; color:#1a1a1a; white-space:nowrap;">
-      <b>{n}.</b> {EROTISEIS[n]}</td>
+      <b>{EROTISEIS[n]}</b></td>
   <td style="padding:4px 10px; width:220px;">
       <div style="background:{chroma}; height:14px; width:200px;
                   border-radius:7px;"></div></td>
@@ -233,7 +248,7 @@ def katagrapse(n, keimeno):
         print("ΠΡΟΣΟΧΗ:", minima)
 
     if not keimeno:
-        print(f"Ερώτηση {n}: δεν έχετε γράψει ακόμη απάντηση.")
+        print(f"{_etiketa(n)}: δεν έχετε γράψει ακόμη απάντηση.")
         _bar(rec); return
 
     # Σώζεται πρώτα το κείμενο: αν χαθεί η σύνδεση, δεν χάνεται ό,τι γράφτηκε.
@@ -253,16 +268,16 @@ def katagrapse(n, keimeno):
             "ennoies": f"{len(briskontai)}/{apaitoumena}",
         }
         _apothikeuse(rec)
-        print(f"Ερώτηση {n}: καταγράφηκε στις "
+        print(f"{_etiketa(n)}: καταγράφηκε στις "
               f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
     elif n in rec["apantiseis"]:
         rec["apantiseis"][n]["keimeno"] = keimeno      # η χρονοσήμανση μένει
         _apothikeuse(rec)
-        print(f"Ερώτηση {n}: ήδη καταγεγραμμένη "
+        print(f"{_etiketa(n)}: ήδη καταγεγραμμένη "
               f"({rec['apantiseis'][n]['timestamp'].replace('T', ' ')}). "
               "Το κείμενο ενημερώθηκε.")
     else:
-        print(f"Ερώτηση {n}: χρειάζονται τουλάχιστον {apaitoumena} από τις "
+        print(f"{_etiketa(n)}: χρειάζονται τουλάχιστον {apaitoumena} από τις "
               f"ζητούμενες έννοιες, εντοπίστηκαν {len(briskontai)}. "
               "Συμπληρώστε την απάντησή σας και ξανατρέξτε το κελί.")
 
@@ -336,14 +351,14 @@ def katagrapse_askisi(n, diafora, df=None, anoxi=1e-9):
     if df is not None and n in ASKISEIS:
         stili_foititi, stili_sosti = ASKISEIS[n]
         if stili_foititi not in df.columns:
-            print(f"Άσκηση {n}: δεν βρέθηκε η στήλη '{stili_foititi}'.")
+            print(f"{_etiketa(n)}: δεν βρέθηκε η στήλη '{stili_foititi}'.")
             print("Τρέξτε πρώτα το κελί που τη δημιουργεί.")
             _bar(rec)
             return False
         try:
             pragmatiki = float((df[stili_foititi] - df[stili_sosti]).abs().max())
         except Exception:
-            print(f"Άσκηση {n}: η στήλη '{stili_foititi}' δεν είναι αριθμητική.")
+            print(f"{_etiketa(n)}: η στήλη '{stili_foititi}' δεν είναι αριθμητική.")
             print("Μήπως αφήσατε το ... στο κελί της μετατροπής;")
             _bar(rec)
             return False
@@ -352,18 +367,18 @@ def katagrapse_askisi(n, diafora, df=None, anoxi=1e-9):
     try:
         diafora = float(diafora)
     except (TypeError, ValueError):
-        print(f"Άσκηση {n}: η τιμή που δώσατε δεν είναι αριθμός.")
+        print(f"{_etiketa(n)}: η τιμή που δώσατε δεν είναι αριθμός.")
         print("Μήπως αφήσατε το ... στον υπολογισμό της διαφοράς;")
         _bar(rec)
         return False
 
     if diafora != diafora:
-        print(f"Άσκηση {n}: η διαφορά βγήκε NaN - ελέγξτε τη στήλη σας.")
+        print(f"{_etiketa(n)}: η διαφορά βγήκε NaN - ελέγξτε τη στήλη σας.")
         _bar(rec)
         return False
 
     if pragmatiki is not None and abs(diafora - pragmatiki) > max(anoxi, 1e-6):
-        print(f"Άσκηση {n}: ο αριθμός που δηλώσατε ({diafora:.4g}) δεν προκύπτει "
+        print(f"{_etiketa(n)}: ο αριθμός που δηλώσατε ({diafora:.4g}) δεν προκύπτει "
               f"από τα δεδομένα σας.")
         print(f"Η πραγματική μέγιστη διαφορά είναι {pragmatiki:.4g}.")
         print("Υπολογίστε την από τις στήλες - μην τη γράψετε στο χέρι.")
@@ -382,18 +397,92 @@ def katagrapse_askisi(n, diafora, df=None, anoxi=1e-9):
             "ennoies": "1/1",
         }
         _apothikeuse(rec)
-        print(f"Άσκηση {n}: ΣΩΣΤΑ - καταγράφηκε στις "
+        print(f"{_etiketa(n)}: ΣΩΣΤΑ - καταγράφηκε στις "
               f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
     elif epetyche:
-        print(f"Άσκηση {n}: σωστό (είχε ήδη καταγραφεί "
+        print(f"{_etiketa(n)}: σωστό (είχε ήδη καταγραφεί "
               f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}).")
     else:
-        print(f"Άσκηση {n}: όχι ακόμη - η διαφορά είναι {elegxomeni:.4g}, "
+        print(f"{_etiketa(n)}: όχι ακόμη - η διαφορά είναι {elegxomeni:.4g}, "
               f"ενώ θα έπρεπε να είναι πρακτικά μηδέν.")
         print("Ελέγξτε ξανά τον συντελεστή μετατροπής και ξανατρέξτε τα κελιά.")
 
     _bar(rec)
     return epetyche
+
+
+def katagrapse_askisi_timon(n, df=None, anoxi=1e-7, **timres):
+    """Καταγράφει άσκηση που ζητά αριθμητικές τιμές.
+
+    Ο φοιτητής δηλώνει τις τιμές ως ορίσματα, π.χ.
+
+        cu.katagrapse_askisi_timon(6, df, mesos=..., typiki_apoklisi=...)
+
+    Η συνάρτηση υπολογίζει η ίδια το σωστό αποτέλεσμα από τον πίνακα.
+    """
+    rec = _fortose()
+
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prodiagrafi = ASKISEIS_TIMON.get(n, {})
+    if df is None or not prodiagrafi:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας δεδομένων.")
+        _bar(rec); return False
+
+    ola_sosta = True
+    for onoma, (stili, methodos, orismata) in prodiagrafi.items():
+        if stili not in df.columns:
+            print(f"{_etiketa(n)}: δεν βρέθηκε η στήλη '{stili}'.")
+            print("Τρέξτε πρώτα την Άσκηση 1 που τη δημιουργεί.")
+            _bar(rec); return False
+
+        sosto = float(getattr(df[stili], methodos)(**orismata))
+        dothike = timres.get(onoma, None)
+
+        try:
+            dothike = float(dothike)
+        except (TypeError, ValueError):
+            print(f"{_etiketa(n)}: η τιμή '{onoma}' λείπει ή δεν είναι αριθμός.")
+            ola_sosta = False
+            continue
+
+        if abs(dothike - sosto) < anoxi:
+            print(f"  {onoma}: {dothike:.6f}  ΣΩΣΤΟ")
+            continue
+
+        ola_sosta = False
+        print(f"  {onoma}: {dothike:.6f}  ΛΑΘΟΣ (αναμενόταν {sosto:.6f})")
+
+        # η κλασική παγίδη: τυπική απόκλιση πληθυσμού αντί για δείγματος
+        if methodos == "std":
+            alt = float(df[stili].std(ddof=0))
+            if abs(dothike - alt) < anoxi:
+                print("     Χρησιμοποιήσατε ddof=0 (τυπική απόκλιση πληθυσμού).")
+                print("     Τα δεδομένα μας είναι ΔΕΙΓΜΑ - χρειάζεται ddof=1.")
+                print("     Η pandas το κάνει από μόνη της: df[...].std()")
+                print("     Η numpy ΟΧΙ: np.std(...) -> πρέπει np.std(..., ddof=1)")
+
+    if ola_sosta and n not in rec["apantiseis"]:
+        tora = time.time()
+        rec["apantiseis"][n] = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
+            "keimeno": "άσκηση κώδικα - " + ", ".join(
+                f"{k}={float(v):.4f}" for k, v in sorted(timres.items())),
+            "ennoies": f"{len(prodiagrafi)}/{len(prodiagrafi)}",
+        }
+        _apothikeuse(rec)
+        print(f"\n{_etiketa(n)}: ΣΩΣΤΑ - καταγράφηκε στις "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
+    elif ola_sosta:
+        print(f"\n{_etiketa(n)}: σωστό (είχε ήδη καταγραφεί).")
+    else:
+        print(f"\n{_etiketa(n)}: διορθώστε τις τιμές και ξανατρέξτε το κελί.")
+
+    _bar(rec)
+    return ola_sosta
 
 
 def katevase_apantiseis():
