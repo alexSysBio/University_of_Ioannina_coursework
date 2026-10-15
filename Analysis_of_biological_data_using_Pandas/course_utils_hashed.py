@@ -16,7 +16,7 @@ course_utils.py
 Οι λέξεις-κλειδιά κάθε ερώτησης βρίσκονται στο λεξικό KLEIDIA παρακάτω.
 """
 
-import os, re, glob, time, pickle, unicodedata, hashlib
+import os, re, glob, time, shutil, pickle, unicodedata, hashlib
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -773,8 +773,13 @@ def katagrapse_askisi_timon(n, df=None, anoxi=1e-7, **timres):
     return ola_sosta
 
 
-def katevase_apantiseis():
+def katevase_apantiseis(diadromi=None):
     """Αποθηκεύει ΚΑΙ κατεβάζει το αρχείο με τις χρονοσημάνσεις.
+
+    diadromi : πού θα πάει το αρχείο.
+        None            -> μένει στον τρέχοντα φάκελο και ΚΑΤΕΒΑΙΝΕΙ (Colab)
+        "φάκελος/"      -> αντιγράφεται εκεί (π.χ. στο Google Drive)
+        "φάκελος/x.pkl" -> αντιγράφεται εκεί, με αυτό το όνομα
 
     Η λήψη γίνεται ΠΑΝΤΑ, ακόμη κι αν λείπει το όνομα ή το email: στο Colab
     ένα αρχείο που δεν κατέβηκε χάνεται μαζί με τη μηχανή, και δεν υπάρχει
@@ -808,10 +813,33 @@ def katevase_apantiseis():
         print("Όνομα :", ONOMA)
         print("Email :", EMAIL)
 
-    # --- η λήψη γίνεται σε κάθε περίπτωση --------------------------------
+    # --- πού θα καταλήξει ------------------------------------------------
+    if diadromi is None:
+        # προεπιλογή: μένει εδώ και κατεβαίνει στον υπολογιστή
+        try:
+            from google.colab import files
+            files.download(arxeio)
+        except Exception:
+            print(f"(Εκτός Colab: το αρχείο βρίσκεται στο "
+                  f"{os.path.abspath(arxeio)})")
+        return os.path.abspath(arxeio)
+
+    # δόθηκε διαδρομή: αντιγράφουμε εκεί, χωρίς λήψη από τον browser
+    diadromi = os.path.expanduser(str(diadromi))
+    if diadromi.endswith(".pkl"):
+        fakelos, telikо = os.path.dirname(diadromi) or ".", os.path.basename(diadromi)
+    else:
+        fakelos, telikо = diadromi, arxeio
+
     try:
-        from google.colab import files
-        files.download(arxeio)
-    except Exception:
-        print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(arxeio)})")
-    return None
+        if fakelos and not os.path.isdir(fakelos):
+            os.makedirs(fakelos, exist_ok=True)
+        proorismos = os.path.join(fakelos, telikо)
+        shutil.copy2(arxeio, proorismos)
+        print(f"Αντιγράφηκε στο {os.path.abspath(proorismos)}")
+        return os.path.abspath(proorismos)
+    except Exception as e:
+        print(f"ΣΦΑΛΜΑ: δεν μπόρεσα να γράψω στο '{diadromi}' "
+              f"({type(e).__name__}: {e})")
+        print(f"Το αρχείο παραμένει στο {os.path.abspath(arxeio)}")
+        return os.path.abspath(arxeio)
