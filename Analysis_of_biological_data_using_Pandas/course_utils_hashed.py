@@ -17,6 +17,7 @@ course_utils.py
 """
 
 import os, re, time, pickle, unicodedata, hashlib
+import pandas as pd
 from datetime import datetime
 
 # --------------------------------------------------------------------------
@@ -355,9 +356,18 @@ def katagrapse_askisi(n, diafora, df=None, anoxi=1e-9):
             print("Τρέξτε πρώτα το κελί που τη δημιουργεί.")
             _bar(rec)
             return False
+        if stili_sosti not in df.columns:
+            print(f"{_etiketa(n)}: δεν βρέθηκε η στήλη αναφοράς '{stili_sosti}' "
+                  f"στον πίνακα.")
+            print("Φορτώστε ξανά τα αρχικά δεδομένα και ξανατρέξτε τα κελιά.")
+            _bar(rec)
+            return False
         try:
-            pragmatiki = float((df[stili_foititi] - df[stili_sosti]).abs().max())
-        except Exception:
+            pragmatiki = float(
+                (pd.to_numeric(df[stili_foititi], errors="raise")
+                 - pd.to_numeric(df[stili_sosti], errors="raise")).abs().max()
+            )
+        except (TypeError, ValueError):
             print(f"{_etiketa(n)}: η στήλη '{stili_foititi}' δεν είναι αριθμητική.")
             print("Μήπως αφήσατε το ... στο κελί της μετατροπής;")
             _bar(rec)
