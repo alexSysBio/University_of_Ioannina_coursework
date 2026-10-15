@@ -18,6 +18,7 @@ course_utils.py
 
 import os, re, time, pickle, unicodedata, hashlib
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 # --------------------------------------------------------------------------
@@ -34,6 +35,7 @@ EROTISEIS = {
     4: "Ερώτηση 4",
     5: "Άσκηση 1",
     6: "Άσκηση 2",
+    7: "Άσκηση 3",
 }
 
 # Ποιες στήλες ελέγχει κάθε άσκηση κώδικα: n -> (στήλη φοιτητή, σωστή στήλη).
@@ -66,6 +68,17 @@ ASKISEIS_TIMON = {
 # Για να τις αλλάξετε: επεξεργαστείτε το make_keys.py (ΜΗΝ το ανεβάζετε στο
 # GitHub) και αντικαταστήστε το μπλοκ παρακάτω με την έξοδό του.
 # --------------------------------------------------------------------------
+# Ασκήσεις που παράγουν ΠΙΝΑΚΑ ανά ομάδα.
+#   stili_omadas       : η στήλη ομαδοποίησης
+#   stili_apotelesmatos: η στήλη που πρέπει να έχει υπολογίσει ο φοιτητής
+ASKISEIS_PINAKA = {
+    7: {
+        "stili_omadas":        "cell_trajectory_id",
+        "stili_apotelesmatos": "mesos_rythmos_afxisis_perhour",
+        "stili_xronou":        "frame",      # 1 καρέ = 1 λεπτό
+    },
+}
+
 SALT = "UoI-pandas-2026"
 
 KLEIDIA = {
@@ -283,6 +296,109 @@ def katagrapse(n, keimeno):
               "Συμπληρώστε την απάντησή σας και ξανατρέξτε το κελί.")
 
     _bar(rec)
+
+
+def katagrapse_askisi_pinaka(n, pinakas, df=None, anoxi=1e-6):
+    """Καταγράφει άσκηση που παράγει έναν συγκεντρωτικό πίνακα ανά ομάδα.
+
+    Η συνάρτηση **ξαναϋπολογίζει μόνη της** το σωστό αποτέλεσμα από το `df`
+    και το συγκρίνει γραμμή προς γραμμή με τον πίνακα του φοιτητή.
+    """
+    rec = _fortose()
+
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prodiagrafi = ASKISEIS_PINAKA.get(n, {})
+    if df is None or not prodiagrafi:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας δεδομένων.")
+        _bar(rec); return False
+
+    stili_omadas = prodiagrafi["stili_omadas"]
+    stili_apot   = prodiagrafi["stili_apotelesmatos"]
+    stili_xronou = prodiagrafi["stili_xronou"]
+
+    # --- ο πίνακας του φοιτητή ------------------------------------------
+    if not isinstance(pinakas, pd.DataFrame):
+        print(f"{_etiketa(n)}: περίμενα έναν πίνακα (DataFrame), "
+              f"πήρα {type(pinakas).__name__}.")
+        print("Μήπως έμεινε το ... στο κελί;")
+        _bar(rec); return False
+
+    # Αν ο φοιτητής έκανε reset_index(), η στήλη ομαδοποίησης είναι πάλι στήλη:
+    # τη βάζουμε ξανά ως ευρετήριο αντί να τον κόψουμε γι' αυτό.
+    if stili_omadas in pinakas.columns:
+        pinakas = pinakas.set_index(stili_omadas)
+
+    if stili_apot not in pinakas.columns:
+        print(f"{_etiketa(n)}: ο πίνακάς σας δεν έχει στήλη '{stili_apot}'.")
+        print("Οι στήλες που βρήκα:", ", ".join(map(str, pinakas.columns)) or "(καμία)")
+        _bar(rec); return False
+
+    # --- ανεξάρτητος υπολογισμός ----------------------------------------
+    diarkeia = df.groupby(stili_omadas)[stili_xronou].size()
+    sosto = np.log(2) / (diarkeia / 60.0)
+
+    if len(pinakas) != len(sosto):
+        print(f"{_etiketa(n)}: ο πίνακάς σας έχει {len(pinakas)} γραμμές, "
+              f"ενώ οι τροχιές είναι {len(sosto)}.")
+        print(f"Ομαδοποιήσατε σωστά ως προς '{stili_omadas}';")
+        _bar(rec); return False
+
+    try:
+        diko_tous = pd.to_numeric(pinakas[stili_apot], errors="raise")
+    except (TypeError, ValueError):
+        print(f"{_etiketa(n)}: η στήλη '{stili_apot}' δεν περιέχει αριθμούς.")
+        print("Μήπως έμεινε το ... στη γραμμή του υπολογισμού;")
+        _bar(rec); return False
+
+    diko_tous = diko_tous.reindex(sosto.index)
+    if diko_tous.isna().any():
+        print(f"{_etiketa(n)}: οι ετικέτες του πίνακά σας δεν ταιριάζουν με "
+              f"τις τροχιές του '{stili_omadas}'.")
+        print("Χρησιμοποιήστε groupby(...).agg(...), χωρίς reset_index().")
+        _bar(rec); return False
+
+    diafora = float((diko_tous - sosto).abs().max())
+    epetyche = diafora < max(anoxi, 1e-9)
+
+    if not epetyche:
+        print(f"{_etiketa(n)}: οι τιμές δεν συμφωνούν "
+              f"(μέγιστη διαφορά {diafora:.4g}).")
+
+        # οι δύο κλασικές παγίδες
+        logos = float((diko_tous / sosto).median())
+        if abs(logos - 1/60) < 0.02:
+            print("     Ο χρόνος σας είναι σε ΛΕΠΤΑ, όχι σε ώρες.")
+            print("     Διαιρέστε τη διάρκεια με το 60: ln(2) / (T / 60)")
+        elif abs(logos - (np.log10(2) / np.log(2))) < 0.02:
+            print("     Χρησιμοποιήσατε δεκαδικό λογάριθμο (log10).")
+            print("     Ο ρυθμός αύξησης ορίζεται με ΦΥΣΙΚΟ λογάριθμο: np.log(2)")
+        elif abs(logos - 60) < 2:
+            print("     Ο χρόνος σας είναι σε ΩΡΕΣ εκεί που χρειάζονται λεπτά -")
+            print("     μήπως διαιρέσατε δύο φορές με το 60;")
+        _bar(rec); return False
+
+    if n not in rec["apantiseis"]:
+        tora = time.time()
+        rec["apantiseis"][n] = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
+            "keimeno": (f"άσκηση κώδικα - {len(sosto)} τροχιές, "
+                        f"διάμεσος ρυθμός {float(sosto.median()):.3f} /ώρα"),
+            "ennoies": "1/1",
+        }
+        _apothikeuse(rec)
+        print(f"{_etiketa(n)}: ΣΩΣΤΑ - καταγράφηκε στις "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
+    else:
+        print(f"{_etiketa(n)}: σωστό (είχε ήδη καταγραφεί).")
+
+    print(f"  τροχιές        : {len(sosto)}")
+    print(f"  διάμεσος ρυθμός: {float(sosto.median()):.3f} ανά ώρα")
+    _bar(rec)
+    return True
 
 
 def epanafora():
