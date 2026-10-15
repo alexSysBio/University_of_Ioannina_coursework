@@ -31,6 +31,14 @@ EROTISEIS = {
     2: "Χρωμόσωμα",
     3: "Μέτρηση συγκέντρωσης πρωτεΐνης",
     4: "Δύο δημοφιλή στατιστικά",
+    5: "Άσκηση 1: pixel -> μm²",
+}
+
+# Ποιες στήλες ελέγχει κάθε άσκηση κώδικα: n -> (στήλη φοιτητή, σωστή στήλη).
+# Η επαλήθευση γίνεται ΑΠΟ ΤΑ ΙΔΙΑ ΤΑ ΔΕΔΟΜΕΝΑ και όχι από τον αριθμό που
+# δηλώνει ο φοιτητής, ώστε να μην αρκεί ένα «diafora = 0».
+ASKISEIS = {
+    5: ("cell_area_micrometer", "area_um"),
 }
 
 # Κάθε "omada" είναι μία έννοια· μέσα της βρίσκονται συνώνυμα. Αρκεί να
@@ -306,6 +314,86 @@ def epanafora():
           "τυπώστε π.χ. apantisi_1 για να δείτε τι επαναφέρθηκε.")
     _bar(rec)
     return None
+
+
+def katagrapse_askisi(n, diafora, df=None, anoxi=1e-9):
+    """Καταγράφει μια άσκηση κώδικα.
+
+    Ο έλεγχος γίνεται σε δύο σκέλη:
+
+    1. Αν δοθεί το `df`, η συνάρτηση **υπολογίζει μόνη της** τη διαφορά από τις
+       στήλες του πίνακα· δεν εμπιστεύεται τον αριθμό του φοιτητή.
+    2. Ο αριθμός που δήλωσε ο φοιτητής πρέπει να **συμφωνεί** με τον πραγματικό.
+    """
+    rec = _fortose()
+
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    # --- 1. ανεξάρτητη επαλήθευση από τα ίδια τα δεδομένα ------------------
+    pragmatiki = None
+    if df is not None and n in ASKISEIS:
+        stili_foititi, stili_sosti = ASKISEIS[n]
+        if stili_foititi not in df.columns:
+            print(f"Άσκηση {n}: δεν βρέθηκε η στήλη '{stili_foititi}'.")
+            print("Τρέξτε πρώτα το κελί που τη δημιουργεί.")
+            _bar(rec)
+            return False
+        try:
+            pragmatiki = float((df[stili_foititi] - df[stili_sosti]).abs().max())
+        except Exception:
+            print(f"Άσκηση {n}: η στήλη '{stili_foititi}' δεν είναι αριθμητική.")
+            print("Μήπως αφήσατε το ... στο κελί της μετατροπής;")
+            _bar(rec)
+            return False
+
+    # --- 2. ο αριθμός που δήλωσε ο φοιτητής -------------------------------
+    try:
+        diafora = float(diafora)
+    except (TypeError, ValueError):
+        print(f"Άσκηση {n}: η τιμή που δώσατε δεν είναι αριθμός.")
+        print("Μήπως αφήσατε το ... στον υπολογισμό της διαφοράς;")
+        _bar(rec)
+        return False
+
+    if diafora != diafora:
+        print(f"Άσκηση {n}: η διαφορά βγήκε NaN - ελέγξτε τη στήλη σας.")
+        _bar(rec)
+        return False
+
+    if pragmatiki is not None and abs(diafora - pragmatiki) > max(anoxi, 1e-6):
+        print(f"Άσκηση {n}: ο αριθμός που δηλώσατε ({diafora:.4g}) δεν προκύπτει "
+              f"από τα δεδομένα σας.")
+        print(f"Η πραγματική μέγιστη διαφορά είναι {pragmatiki:.4g}.")
+        print("Υπολογίστε την από τις στήλες - μην τη γράψετε στο χέρι.")
+        _bar(rec)
+        return False
+
+    elegxomeni = pragmatiki if pragmatiki is not None else diafora
+    epetyche = abs(elegxomeni) < anoxi
+
+    if epetyche and n not in rec["apantiseis"]:
+        tora = time.time()
+        rec["apantiseis"][n] = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
+            "keimeno": f"άσκηση κώδικα - διαφορά {elegxomeni:.3g}",
+            "ennoies": "1/1",
+        }
+        _apothikeuse(rec)
+        print(f"Άσκηση {n}: ΣΩΣΤΑ - καταγράφηκε στις "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
+    elif epetyche:
+        print(f"Άσκηση {n}: σωστό (είχε ήδη καταγραφεί "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}).")
+    else:
+        print(f"Άσκηση {n}: όχι ακόμη - η διαφορά είναι {elegxomeni:.4g}, "
+              f"ενώ θα έπρεπε να είναι πρακτικά μηδέν.")
+        print("Ελέγξτε ξανά τον συντελεστή μετατροπής και ξανατρέξτε τα κελιά.")
+
+    _bar(rec)
+    return epetyche
 
 
 def katevase_apantiseis():
