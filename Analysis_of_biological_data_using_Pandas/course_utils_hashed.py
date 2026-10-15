@@ -774,22 +774,44 @@ def katagrapse_askisi_timon(n, df=None, anoxi=1e-7, **timres):
 
 
 def katevase_apantiseis():
-    """Αποθηκεύει και κατεβάζει το αρχείο με τις χρονοσημάνσεις."""
+    """Αποθηκεύει ΚΑΙ κατεβάζει το αρχείο με τις χρονοσημάνσεις.
+
+    Η λήψη γίνεται ΠΑΝΤΑ, ακόμη κι αν λείπει το όνομα ή το email: στο Colab
+    ένα αρχείο που δεν κατέβηκε χάνεται μαζί με τη μηχανή, και δεν υπάρχει
+    λόγος να χάσει κανείς τη δουλειά του για ένα τυπογραφικό.
+    """
     rec = _fortose()
     _apothikeuse(rec)
+    arxeio = onoma_arxeiou()
+
     print(f"Αποθηκεύτηκαν {len(rec['apantiseis'])} από {len(EROTISEIS)} απαντήσεις "
-          f"στο {onoma_arxeiou()}")
+          f"στο {arxeio}")
+
+    provlimata = []
     if not ONOMA:
-        print("ΠΡΟΣΟΧΗ: δεν έχετε συμπληρώσει το cu.ONOMA στο πρώτο κελί.")
+        provlimata.append("δεν έχετε συμπληρώσει το cu.ONOMA")
     egkyro, minima = _elegxos_email(EMAIL)
     if not egkyro:
-        print("\nΣΦΑΛΜΑ:", minima)
-        print("Διορθώστε το cu.EMAIL στο πρώτο κελί και ξανατρέξτε αυτό το κελί.")
-        return None
-    print("Email επικοινωνίας:", EMAIL)
+        provlimata.append(minima)
+
+    if provlimata:
+        print()
+        print("!" * 68)
+        for p in provlimata:
+            print("ΠΡΟΣΟΧΗ:", p)
+        print()
+        print("Το αρχείο κατεβαίνει κανονικά, ΑΛΛΑ χωρίς σωστό όνομα και email")
+        print("δεν μπορεί να σας αποδοθεί. Διορθώστε τα στο πρώτο κελί και")
+        print("ξανατρέξτε ΑΥΤΟ το κελί - θα κατέβει διορθωμένο.")
+        print("!" * 68)
+    else:
+        print("Όνομα :", ONOMA)
+        print("Email :", EMAIL)
+
+    # --- η λήψη γίνεται σε κάθε περίπτωση --------------------------------
     try:
         from google.colab import files
-        files.download(onoma_arxeiou())
+        files.download(arxeio)
     except Exception:
-        print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(onoma_arxeiou())})")
+        print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(arxeio)})")
     return None
