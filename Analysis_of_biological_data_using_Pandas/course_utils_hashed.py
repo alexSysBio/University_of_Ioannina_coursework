@@ -16,7 +16,7 @@ course_utils.py
 Οι λέξεις-κλειδιά κάθε ερώτησης βρίσκονται στο λεξικό KLEIDIA παρακάτω.
 """
 
-import os, re, time, pickle, unicodedata, hashlib
+import os, re, glob, time, pickle, unicodedata, hashlib
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -26,7 +26,22 @@ from datetime import datetime
 # --------------------------------------------------------------------------
 ONOMA = ""          # π.χ. "Papadopoulou_Maria_14102027"
 EMAIL = ""          # ακαδημαϊκό email, π.χ. "bio01234@uoi.gr"
-ARXEIO = "apantiseis_timestamps.pkl"
+VASI_ARXEIOU = "apantiseis"        # το όνομα συμπληρώνεται από το email
+
+
+def onoma_arxeiou():
+    """apantiseis_<χρήστης>.pkl, όπου <χρήστης> είναι το email πριν το @,
+    χωρίς τελείες.
+
+    Έτσι, αν πολλοί φοιτητές δουλέψουν στον ίδιο υπολογιστή, ο καθένας έχει
+    ΔΙΚΟ ΤΟΥ αρχείο και κανείς δεν διαβάζει τις απαντήσεις κάποιου άλλου.
+    Π.χ. a.papagiannakis@uoi.gr -> apantiseis_apapagiannakis.pkl
+    """
+    xristis = ""
+    if EMAIL and "@" in EMAIL:
+        xristis = EMAIL.split("@", 1)[0].strip().lower().replace(".", "")
+        xristis = re.sub(r"[^A-Za-z0-9_-]", "_", xristis)
+    return f"{VASI_ARXEIOU}_{xristis}.pkl" if xristis else f"{VASI_ARXEIOU}_ANONYMO.pkl"
 
 EROTISEIS = {
     1: "Ερώτηση 1",
@@ -219,13 +234,54 @@ def _apaitoumena(n):
     return 2 if len(KLEIDIA.get(n, [])) > 2 else 1
 
 
+def _diko_mou(rec):
+    """True μόνο αν το αρχείο ανήκει σε ΑΥΤΟΝ τον χρήστη."""
+    if not isinstance(rec, dict):
+        return False
+    email_arx = (rec.get("email") or "").strip().lower()
+    onoma_arx = (rec.get("onoma") or "").strip()
+    if EMAIL and email_arx and email_arx == EMAIL.strip().lower():
+        return True
+    if ONOMA and onoma_arx and onoma_arx == ONOMA.strip():
+        return True
+    return False
+
+
+def _vres_proigoumeno():
+    """Αρχείο από προηγούμενη αποθήκευση ΤΟΥ ΙΔΙΟΥ χρήστη - π.χ. αν διόρθωσε
+    το email του. ΔΕΝ αγγίζει ποτέ αρχεία άλλων φοιτητών."""
+    ypopsifia = sorted(glob.glob(VASI_ARXEIOU + "*.pkl"))
+    ypopsifia += ["apantiseis_timestamps.pkl"]        # παλιό όνομα
+    for diadromi in ypopsifia:
+        if not os.path.exists(diadromi):
+            continue
+        try:
+            with open(diadromi, "rb") as f:
+                rec = pickle.load(f)
+        except Exception:
+            continue
+        if _diko_mou(rec):
+            return diadromi, rec
+    return None, None
+
+
 def _fortose():
-    if os.path.exists(ARXEIO):
-        with open(ARXEIO, "rb") as f:
+    diadromi = onoma_arxeiou()
+    if os.path.exists(diadromi):
+        with open(diadromi, "rb") as f:
             rec = pickle.load(f)
         rec.setdefault("proxeira", {})      # ό,τι γράφτηκε, έστω ατελές
         rec.setdefault("apantiseis", {})
         return rec
+
+    # Μήπως υπάρχει αρχείο του ΙΔΙΟΥ χρήστη με άλλο όνομα;
+    palio, rec = _vres_proigoumeno()
+    if rec is not None:
+        print(f"(βρέθηκαν προηγούμενες απαντήσεις στο {palio})")
+        rec.setdefault("proxeira", {})
+        rec.setdefault("apantiseis", {})
+        return rec
+
     return {"onoma": ONOMA, "email": EMAIL, "enarxi": time.time(),
             "enarxi_iso": datetime.now().isoformat(timespec="seconds"),
             "apantiseis": {}, "proxeira": {}}
@@ -234,7 +290,7 @@ def _fortose():
 def _apothikeuse(rec):
     rec["onoma"] = ONOMA or rec.get("onoma", "")
     rec["email"] = EMAIL or rec.get("email", "")
-    with open(ARXEIO, "wb") as f:
+    with open(onoma_arxeiou(), "wb") as f:
         pickle.dump(rec, f)
 
 
@@ -502,15 +558,15 @@ def epanafora():
     Αν το Colab έσβησε τη μηχανή, το αρχείο δεν υπάρχει πια εδώ: ανεβάστε αυτό
     που είχατε κατεβάσει και οι απαντήσεις επιστρέφουν στις μεταβλητές.
     """
-    if not os.path.exists(ARXEIO):
+    if not os.path.exists(onoma_arxeiou()):
         try:
             from google.colab import files
-            print(f"Δεν βρέθηκε {ARXEIO}. Ανεβάστε το αρχείο που είχατε κατεβάσει:")
+            print(f"Δεν βρέθηκε {onoma_arxeiou()}. Ανεβάστε το αρχείο που είχατε κατεβάσει:")
             files.upload()
         except Exception:
             pass
 
-    if not os.path.exists(ARXEIO):
+    if not os.path.exists(onoma_arxeiou()) and _vres_proigoumeno()[1] is None:
         print("Δεν βρέθηκε αρχείο απαντήσεων. Ξεκινήστε κανονικά από την αρχή.")
         return
 
@@ -722,7 +778,7 @@ def katevase_apantiseis():
     rec = _fortose()
     _apothikeuse(rec)
     print(f"Αποθηκεύτηκαν {len(rec['apantiseis'])} από {len(EROTISEIS)} απαντήσεις "
-          f"στο {ARXEIO}")
+          f"στο {onoma_arxeiou()}")
     if not ONOMA:
         print("ΠΡΟΣΟΧΗ: δεν έχετε συμπληρώσει το cu.ONOMA στο πρώτο κελί.")
     egkyro, minima = _elegxos_email(EMAIL)
@@ -733,7 +789,7 @@ def katevase_apantiseis():
     print("Email επικοινωνίας:", EMAIL)
     try:
         from google.colab import files
-        files.download(ARXEIO)
+        files.download(onoma_arxeiou())
     except Exception:
-        print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(ARXEIO)})")
+        print(f"(Εκτός Colab: το αρχείο βρίσκεται στο {os.path.abspath(onoma_arxeiou())})")
     return None
