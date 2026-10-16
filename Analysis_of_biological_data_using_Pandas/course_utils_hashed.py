@@ -52,6 +52,9 @@ EROTISEIS = {
     6: "Άσκηση 2",
     7: "Άσκηση 3",
     8: "Άσκηση 4",
+    9: "Εργασία 1",
+    10: "Εργασία 2",
+    11: "Εργασία 3",
 }
 
 # Ποιες στήλες ελέγχει κάθε άσκηση κώδικα: n -> (στήλη φοιτητή, σωστή στήλη).
@@ -109,6 +112,80 @@ ASKISEIS_BIN = {
             "cf285b57633ffb73",
             "8c29455502ef8ed1",
             "33dbfeac67ef15b8",
+        ],
+    },
+}
+
+# --------------------------------------------------------------------------
+# ΤΕΛΙΚΗ ΕΡΓΑΣΙΑ (capstone) - τρία μέρη.
+#
+# Αρχή που τηρείται και εδώ: η μονάδα ΔΕΝ περιέχει τη λύση. Ό,τι μπορεί να
+# επαληθευτεί από τα ίδια τα δεδομένα επαληθεύεται· ό,τι θα αποκάλυπτε τη
+# μέθοδο αποθηκεύεται ΜΟΝΟ κατακερματισμένο.
+# --------------------------------------------------------------------------
+
+# Εργασία 1: οι διορθωμένες στήλες. Εδώ δεν υπάρχει μυστικό - ο πολλαπλασιασμός
+# δίνεται στην εκφώνηση - οπότε ελέγχεται ΑΠΕΥΘΕΙΑΣ από τα δεδομένα.
+#   στήλη φοιτητή -> (στήλη μέτρησης, στήλη συντελεστή)
+ERGASIA_DIORTHOSIS = {
+    9: {
+        "ribo": ("mean_fluor_2", "rpla_ratio"),
+        "nuc":  ("mean_fluor_3", "hupa_ratio"),
+    },
+}
+
+# Εργασία 2: η συσχέτιση Spearman υπολογίζεται από ΤΟΝ ΠΙΝΑΚΑ ΤΟΥ ΦΟΙΤΗΤΗ
+# (δεν εμπιστευόμαστε δηλωμένο αριθμό), και συγκρίνεται με κατακερματισμένες
+# αποδεκτές τιμές. Το εύρος καλύπτει τους εύλογους ορισμούς της «γέννησης».
+ERGASIA_SYSXETISIS = {
+    10: {
+        "stili_gr": "gr",
+        "psifia":   2,
+        "zeugaria": {
+            "ribo_gennisi": [
+            "e7e9cbf3a50a94da",
+            "d606965123697201",
+            "7e9eed77e2c3f2ee",
+            "ff1a791df9fdb3e9",
+            "ad2adee238c54a9c",
+            "59be4e5b10358448",
+            "ec08f23ac0593479",
+            "cbfe7b384f75775a",
+            "e4df7ab74761a250",
+            "39d22c52fd1554e3",
+        ],
+            "nuc_gennisi":  [
+            "43592618a2755c39",
+            "50b57429f9b94ab6",
+            "4bf8028318647f84",
+            "c636af2d83c2151d",
+            "a1900a419d0fe892",
+            "4110cdb577b826a3",
+            "3500cfe9be1933ae",
+            "7f99f267e6289f67",
+            "026818ca4ab22f8e",
+            "9019e9a140b03402",
+            "8a0b12091583bd24",
+        ],
+        },
+    },
+}
+
+# Εργασία 3: ο μέσος ρυθμός σύνθεσης, πάλι από τη στήλη του φοιτητή.
+ERGASIA_RYTHMOU = {
+    11: {
+        "stili":   "ribo_rythmos",
+        "psifia":  2,
+        "kleidia": [
+        "bfb99976a5fc37d3",
+        "c819517460ec7b92",
+        "16316e1c9165017c",
+        "f065dd942c8ac0e7",
+        "890aa8ce7432bc72",
+        "80ce3de8b439d003",
+        "1b31630c313d47da",
+        "83614762e76ca1e8",
+        "ffc299c997867c96",
         ],
     },
 }
@@ -771,6 +848,204 @@ def katagrapse_askisi_timon(n, df=None, anoxi=1e-7, **timres):
 
     _bar(rec)
     return ola_sosta
+
+
+def _katagrapse_epitychia(rec, n, keimeno, ennoies):
+    """Κοινή καταγραφή επιτυχίας για τα μέρη της τελικής εργασίας."""
+    if n not in rec["apantiseis"]:
+        tora = time.time()
+        rec["apantiseis"][n] = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "lepta_apo_tin_arxi": round((tora - rec["enarxi"]) / 60, 2),
+            "keimeno": keimeno,
+            "ennoies": ennoies,
+        }
+        _apothikeuse(rec)
+        print(f"\n{_etiketa(n)}: ΣΩΣΤΑ - καταγράφηκε στις "
+              f"{rec['apantiseis'][n]['timestamp'].replace('T', ' ')}.")
+    else:
+        print(f"\n{_etiketa(n)}: σωστό (είχε ήδη καταγραφεί).")
+
+
+def _arithmitiki(pinakas, stili, n):
+    """Επιστρέφει αριθμητική στήλη ή None, με μήνυμα αν λείπει/δεν είναι αριθμοί."""
+    if pinakas is None:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας.")
+        return None
+    if stili not in pinakas.columns:
+        print(f"{_etiketa(n)}: δεν βρέθηκε η στήλη '{stili}'.")
+        print("Τρέξτε πρώτα το κελί που τη δημιουργεί.")
+        return None
+    try:
+        return pd.to_numeric(pinakas[stili], errors="raise")
+    except (TypeError, ValueError):
+        print(f"{_etiketa(n)}: η στήλη '{stili}' δεν περιέχει αριθμούς.")
+        print("Μήπως έμεινε το ... στο κελί;")
+        return None
+
+
+def katagrapse_ergasia_diorthosis(n, df=None):
+    """Εργασία 1: ελέγχει τις ΔΙΟΡΘΩΜΕΝΕΣ στήλες.
+
+        cu.katagrapse_ergasia_diorthosis(9, df)
+
+    Η συνάρτηση ξαναϋπολογίζει τη διόρθωση από τις αρχικές στήλες του πίνακα
+    και τη συγκρίνει με τη στήλη του φοιτητή - δεν εμπιστεύεται κανέναν αριθμό.
+    """
+    rec = _fortose()
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prodiagrafi = ERGASIA_DIORTHOSIS.get(n, {})
+    if df is None or not prodiagrafi:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας δεδομένων.")
+        _bar(rec); return False
+
+    ola_sosta = True
+    for stili_foititi, (stili_metrisis, stili_syntelesti) in prodiagrafi.items():
+        diki_tou = _arithmitiki(df, stili_foititi, n)
+        if diki_tou is None:
+            _bar(rec); return False
+        for anagkaia in (stili_metrisis, stili_syntelesti):
+            if anagkaia not in df.columns:
+                print(f"{_etiketa(n)}: λείπει η αρχική στήλη '{anagkaia}'.")
+                print("Φορτώστε ξανά τα δεδομένα και ξανατρέξτε τα κελιά.")
+                _bar(rec); return False
+
+        sosti = (pd.to_numeric(df[stili_metrisis], errors="coerce")
+                 * pd.to_numeric(df[stili_syntelesti], errors="coerce"))
+
+        # Συγκρίνουμε ΜΟΝΟ εκεί που υπάρχει μέτρηση: τα NaN του φθορισμού
+        # είναι αναμενόμενα και δεν αποτελούν λάθος.
+        mazi = pd.concat([diki_tou, sosti], axis=1).dropna()
+        if len(mazi) == 0:
+            print(f"{_etiketa(n)}: η στήλη '{stili_foititi}' δεν έχει καμία έγκυρη τιμή.")
+            ola_sosta = False
+            continue
+
+        sxetiko = (mazi.iloc[:, 0] - mazi.iloc[:, 1]).abs().max() / max(
+            abs(float(mazi.iloc[:, 1].mean())), 1e-12)
+        if sxetiko < 1e-6:
+            print(f"   {stili_foititi}: σωστή ({len(mazi):,} τιμές ελέγχθηκαν)"
+                  .replace(",", "."))
+        else:
+            ola_sosta = False
+            print(f"   {stili_foititi}: ΛΑΘΟΣ.")
+            print(f"      Η στήλη δεν ισούται με {stili_metrisis} x {stili_syntelesti}.")
+            if (mazi.iloc[:, 0] - pd.to_numeric(df[stili_metrisis],
+                                                errors="coerce")).abs().max() < 1e-9:
+                print("      Μοιάζει να αντιγράψατε τη στήλη ΧΩΡΙΣ να τη διορθώσετε.")
+
+    if ola_sosta:
+        _katagrapse_epitychia(rec, n, "εργασία 1 - διόρθωση φθορισμού",
+                              f"{len(prodiagrafi)}/{len(prodiagrafi)}")
+    else:
+        print(f"\n{_etiketa(n)}: διορθώστε τις στήλες και ξανατρέξτε το κελί.")
+    _bar(rec)
+    return ola_sosta
+
+
+def katagrapse_ergasia_sysxetisis(n, pinakas=None):
+    """Εργασία 2: ελέγχει τις συσχετίσεις Spearman.
+
+        cu.katagrapse_ergasia_sysxetisis(10, gennisi)
+
+    Η συσχέτιση υπολογίζεται ΕΔΩ, από τον πίνακα ανά τροχιά που έφτιαξε ο
+    φοιτητής· δεν δηλώνεται ως αριθμός.
+    """
+    rec = _fortose()
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prodiagrafi = ERGASIA_SYSXETISIS.get(n, {})
+    if pinakas is None or not prodiagrafi:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας ανά τροχιά.")
+        _bar(rec); return False
+
+    gr = _arithmitiki(pinakas, prodiagrafi["stili_gr"], n)
+    if gr is None:
+        _bar(rec); return False
+
+    psifia = prodiagrafi["psifia"]
+    ola_sosta, perigrafi = True, []
+    for stili, kleidia in prodiagrafi["zeugaria"].items():
+        timi = _arithmitiki(pinakas, stili, n)
+        if timi is None:
+            _bar(rec); return False
+
+        mazi = pd.concat([timi, gr], axis=1).dropna()
+        if len(mazi) < 30:
+            print(f"{_etiketa(n)}: πολύ λίγες γραμμές ({len(mazi)}) στη στήλη '{stili}'.")
+            print("Περιμέναμε μία γραμμή ανά τροχιά - μήπως ξεχάσατε το groupby;")
+            _bar(rec); return False
+
+        rho = float(mazi.corr(method="spearman").iloc[0, 1])
+        perigrafi.append(f"{stili}: rho={rho:+.3f}")
+        if _hash(f"{round(rho, psifia):.{psifia}f}") in kleidia:
+            print(f"   {stili}: Spearman rho = {rho:+.3f}  - σωστό "
+                  f"({len(mazi):,} τροχιές)".replace(",", "."))
+        else:
+            ola_sosta = False
+            print(f"   {stili}: Spearman rho = {rho:+.3f}  - ΔΕΝ είναι το αναμενόμενο.")
+            print("      Ελέγξτε: (α) εφαρμόσατε τη διόρθωση της Εργασίας 1;")
+            print("               (β) πήρατε την ΠΡΩΤΗ ΕΓΚΥΡΗ μέτρηση κάθε τροχιάς;")
+
+    if ola_sosta:
+        _katagrapse_epitychia(rec, n, "εργασία 2 - " + ", ".join(perigrafi),
+                              f"{len(perigrafi)}/{len(perigrafi)}")
+    else:
+        print(f"\n{_etiketa(n)}: διορθώστε την ανάλυση και ξανατρέξτε το κελί.")
+    _bar(rec)
+    return ola_sosta
+
+
+def katagrapse_ergasia_rythmou(n, pinakas=None):
+    """Εργασία 3: ελέγχει τον μέσο ρυθμό σύνθεσης ριβοσωμάτων.
+
+        cu.katagrapse_ergasia_rythmou(11, apotelesma)
+    """
+    rec = _fortose()
+    egkyro, minima = _elegxos_email(EMAIL)
+    if not egkyro:
+        print("ΠΡΟΣΟΧΗ:", minima)
+
+    prodiagrafi = ERGASIA_RYTHMOU.get(n, {})
+    if pinakas is None or not prodiagrafi:
+        print(f"{_etiketa(n)}: λείπει ο πίνακας ανά τροχιά.")
+        _bar(rec); return False
+
+    rythmos = _arithmitiki(pinakas, prodiagrafi["stili"], n)
+    if rythmos is None:
+        _bar(rec); return False
+
+    rythmos = rythmos.dropna()
+    if len(rythmos) < 30:
+        print(f"{_etiketa(n)}: πολύ λίγες τιμές ({len(rythmos)}).")
+        print("Περιμέναμε μία τιμή ανά τροχιά - μήπως ξεχάσατε το groupby;")
+        _bar(rec); return False
+
+    psifia = prodiagrafi["psifia"]
+    mesos = float(rythmos.mean())
+    if _hash(f"{round(mesos, psifia):.{psifia}f}") in prodiagrafi["kleidia"]:
+        print(f"   μέσος ρυθμός σύνθεσης = {mesos:.3f} ανά ώρα  - σωστό "
+              f"({len(rythmos):,} τροχιές)".replace(",", "."))
+        _katagrapse_epitychia(rec, n, f"εργασία 3 - μέσος ρυθμός {mesos:.4f}/ώρα", "1/1")
+        _bar(rec)
+        return True
+
+    print(f"   μέσος ρυθμός σύνθεσης = {mesos:.3f} ανά ώρα  - ΔΕΝ είναι το αναμενόμενο.")
+    if 0.0080 < mesos < 0.0100:
+        print("      Η τάξη μεγέθους δείχνει ρυθμό ΑΝΑ ΛΕΠΤΟ: "
+              "πολλαπλασιάστε την κλίση με 60.")
+    else:
+        print("      Ελέγξτε: (α) λογαριθμίσατε την ΠΟΣΟΤΗΤΑ "
+              "(συγκέντρωση x area_px);")
+        print("               (β) η κλίση είναι ανά λεπτό - θέλει x60;")
+    print(f"\n{_etiketa(n)}: διορθώστε την ανάλυση και ξανατρέξτε το κελί.")
+    _bar(rec)
+    return False
 
 
 def katevase_apantiseis(diadromi=None):
